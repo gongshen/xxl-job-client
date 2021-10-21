@@ -1,0 +1,4 @@
+xxl_job_conf:
+  app_name: test
+  client_port: 8088
+  admin_address: http://url/xxl-job-admin
