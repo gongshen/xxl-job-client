@@ -1,8 +1,11 @@
-module github.com/gongshen/xxl-job-executor
+module github.com/gongshen/xxl-job-client
 
-go 1.16
+go 1.20
+
+require github.com/valyala/fasthttp v1.46.0
 
 require (
-	github.com/feixiaobo/go-xxl-job-client/v2 v2.1.1
-	github.com/jinzhu/configor v1.2.1
+	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/klauspost/compress v1.16.3 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 )
