@@ -34,6 +34,7 @@ type RegistryParam struct {
 	RegistryValue string `json:"registryValue"`
 }
 
+// xxl-job v2.2
 type LogRequest struct {
 	LogDateTim  int64 `json:"logDateTim"`
 	LogId       int64 `json:"logId"`
