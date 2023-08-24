@@ -8,3 +8,10 @@ const (
 	GluePrefix     = "GLUE_"
 	GluePrefixLen  = len(GluePrefix)
 )
+
+// 阻塞处理策略
+const (
+	SerialExecution = "SERIAL_EXECUTION" //单机串行
+	DiscardLater    = "DISCARD_LATER"    //丢弃后续调度
+	CoverEarly      = "COVER_EARLY"      //覆盖之前调度
+)

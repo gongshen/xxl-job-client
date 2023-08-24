@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"github.com/gongshen/xxl-job-client/constants"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -21,18 +22,19 @@ type JobQueue struct {
 	CurrentJob *JobRunParam
 	Run        int32 //0 stop, 1 run
 	Queue      *queue.Queue
-	Callback   func(trigger *JobRunParam, runErr error)
+	Callback   func(int64, int64, error)
 }
 
 type JobRunParam struct {
-	LogId             int64
-	LogDateTime       int64
-	JobName           string
-	JobTag            string
-	InputParam        map[string]interface{}
-	ShardIdx          int32
-	ShardTotal        int32
-	CurrentCancelFunc context.CancelFunc
+	LogId                 int64
+	LogDateTime           int64
+	JobName               string
+	JobTag                string
+	InputParam            map[string]interface{}
+	ShardIdx              int32
+	ShardTotal            int32
+	CurrentCancelFunc     context.CancelFunc
+	ExecutorBlockStrategy string
 }
 
 func (jq *JobQueue) StartJob() {
@@ -51,7 +53,7 @@ func (jq *JobQueue) asyRunJob() {
 			has, node := jq.Queue.Poll()
 			if has {
 				jq.CurrentJob = node.(*JobRunParam)
-				jq.Callback(jq.CurrentJob, jq.Execute(jq.JobId, jq.GlueType, jq.CurrentJob))
+				jq.Callback(jq.CurrentJob.LogId, jq.CurrentJob.LogDateTime, jq.Execute(jq.JobId, jq.GlueType, jq.CurrentJob))
 			} else {
 				jq.StopJob()
 				break
@@ -67,7 +69,7 @@ type JobHandler struct {
 
 	QueueMap map[int32]*JobQueue
 
-	CallbackFunc func(trigger *JobRunParam, runErr error)
+	CallbackFunc func(int64, int64, error)
 }
 
 func (j *JobHandler) BeanJobLength() int {
@@ -104,6 +106,20 @@ func (j *JobHandler) HasRunning(jobId int32) bool {
 func (j *JobHandler) PutJobToQueue(trigger *transport.TriggerParam) (err error) {
 	qu, has := j.QueueMap[trigger.JobId] //map value是地址，读不加锁
 	if has {
+		if trigger.ExecutorBlockStrategy == constants.DiscardLater {
+			if atomic.LoadInt32(&qu.Run) == 1 {
+				// 丢弃本次调度
+				return &ExecutorBlockStrategyErr{
+					msg: "job正在执行，丢弃本地调度",
+				}
+			}
+		} else if trigger.ExecutorBlockStrategy == constants.CoverEarly {
+			if atomic.LoadInt32(&qu.Run) == 1 {
+				// 杀掉队列中的任务
+				j.cancelJob(trigger.JobId)
+				goto initQueue
+			}
+		}
 		runParam, err := qu.ParseJob(trigger)
 		if err != nil {
 			return err
@@ -116,6 +132,7 @@ func (j *JobHandler) PutJobToQueue(trigger *transport.TriggerParam) (err error) 
 		return err
 	}
 
+initQueue:
 	j.Lock() //任务map初始化锁
 	defer j.Unlock()
 

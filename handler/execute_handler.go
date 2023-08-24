@@ -96,11 +96,12 @@ func (s *ScriptHandler) ParseJob(trigger *transport.TriggerParam) (jobParam *Job
 	}
 
 	jobParam = &JobRunParam{
-		LogId:       trigger.LogId,
-		LogDateTime: trigger.LogDateTime,
-		JobName:     trigger.ExecutorHandler,
-		JobTag:      path,
-		InputParam:  inputParam,
+		LogId:                 trigger.LogId,
+		LogDateTime:           trigger.LogDateTime,
+		JobName:               trigger.ExecutorHandler,
+		JobTag:                path,
+		InputParam:            inputParam,
+		ExecutorBlockStrategy: trigger.ExecutorBlockStrategy,
 	}
 	if trigger.BroadcastTotal > 0 {
 		jobParam.ShardIdx = trigger.BroadcastIndex
@@ -193,11 +194,12 @@ func (b *BeanHandler) ParseJob(trigger *transport.TriggerParam) (jobParam *JobRu
 
 	funName := getFunctionName(b.RunFunc)
 	jobParam = &JobRunParam{
-		LogId:       trigger.LogId,
-		LogDateTime: trigger.LogDateTime,
-		JobName:     trigger.ExecutorHandler,
-		JobTag:      funName,
-		InputParam:  inputParam,
+		LogId:                 trigger.LogId,
+		LogDateTime:           trigger.LogDateTime,
+		JobName:               trigger.ExecutorHandler,
+		JobTag:                funName,
+		InputParam:            inputParam,
+		ExecutorBlockStrategy: trigger.ExecutorBlockStrategy,
 	}
 	return jobParam, err
 }

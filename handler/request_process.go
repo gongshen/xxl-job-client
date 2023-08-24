@@ -49,20 +49,28 @@ func (r *RequestProcess) pushJob(trigger *transport.TriggerParam) {
 			Code:       http.StatusInternalServerError,
 			Msg:        err.Error(),
 		}
+		if ne, ok := err.(interface{ Temporary() bool }); ok && ne.Temporary() {
+			callback.Code = http.StatusOK
+		}
+
 		r.adminServer.CallbackAdmin([]*transport.HandleCallbackParam{callback})
 	}
 }
 
-func (r *RequestProcess) jobRunCallback(trigger *JobRunParam, runErr error) {
+func (r *RequestProcess) jobRunCallback(logId, logDatetime int64, runErr error) {
 	callback := &transport.HandleCallbackParam{
-		LogId:      trigger.LogId,
-		LogDateTim: trigger.LogDateTime,
+		LogId:      logId,
+		LogDateTim: logDatetime,
 		Code:       http.StatusOK,
 		Msg:        "success",
 	}
 	if runErr != nil {
-		callback.Code = http.StatusInternalServerError
-		callback.Msg = runErr.Error()
+		if ne, ok := runErr.(interface{ Temporary() bool }); !ok || !ne.Temporary() {
+			callback.Code = http.StatusInternalServerError
+			callback.Msg = runErr.Error()
+		} else {
+			callback.Msg = runErr.Error()
+		}
 	}
 	r.adminServer.CallbackAdmin([]*transport.HandleCallbackParam{callback})
 }
@@ -104,7 +112,7 @@ func (r *RequestProcess) RequestProcess(ctx *fasthttp.RequestCtx) {
 	default:
 		ta, err := r.ReqHandler.Run(ctx.Request.Body())
 		if err != nil {
-			log.Printf("PushJob. triggerParams: jobId:%d,ExecutorParams=%s,ExecutorBlockStrategy:%s,ExecutorTimeout:%d.LogId:%d,LogDateTime:%d,GlueType:%s\n", ta.JobId, ta.ExecutorParams, ta.ExecutorBlockStrategy, ta.ExecutorTimeout, ta.LogId, ta.LogDateTime, ta.GlueType)
+			log.Printf("PushJob. triggerParams: %+v\n", ta)
 			returnt.Code = http.StatusInternalServerError
 			returnt.Msg = err.Error()
 		}
